@@ -1,0 +1,49 @@
+!pip install streamlit streamlit-colab google-genai pdfplumber
+app_code = """
+import os
+import pdfplumber
+import streamlit as st
+from google import genai
+
+# --- Setup ---
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+# --- Functions ---
+def extract_text(file_path):
+    text = ""
+    with pdfplumber.open(file_path) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\\n"
+    return text.strip()
+
+def get_summary(patientinfo):
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents="Summarize the following and give me the most important information for a patient handoff: " + patientinfo
+    )
+    return response.text
+
+# --- Streamlit App ---
+st.set_page_config(page_title="Medical Handoff Summarizer", layout="wide")
+st.markdown("<h1>Medical Handoff Summarizer</h1>", unsafe_allow_html=True)
+st.markdown("<p style='color:gray;'>Upload a PDF to generate a structured patient handoff summary</p>", unsafe_allow_html=True)
+
+uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
+if uploaded_file:
+    temp_path = f"temp_{uploaded_file.name}"
+    with open(temp_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    st.info("Extracting text...")
+    raw_text = extract_text(temp_path)
+    with st.spinner("Generating summary with Gemini..."):
+        summary = get_summary(raw_text)
+    st.success("Summary generated successfully!")
+    st.markdown(summary)
+"""
+
+with open("app.py", "w") as f:
+    f.write(app_code)
+!npm install -g localtunnel
+!pip install streamlit
