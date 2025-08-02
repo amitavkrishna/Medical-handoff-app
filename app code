@@ -1,15 +1,14 @@
-!pip install streamlit streamlit-colab google-genai pdfplumber
 app_code = """
 import os
 import pdfplumber
 import streamlit as st
 from google import genai
 
-# --- Setup ---
+# --- Setup Gemini Client ---
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # --- Functions ---
-def extract_text(file_path):
+def gettext(file_path):
     text = ""
     with pdfplumber.open(file_path) as pdf:
         for page in pdf.pages:
@@ -18,32 +17,62 @@ def extract_text(file_path):
                 text += page_text + "\\n"
     return text.strip()
 
-def get_summary(patientinfo):
+def getsummary(patientinfo):
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents="Summarize the following and give me the most important information for a patient handoff: " + patientinfo
+        contents="Summarize the following and give me the most important information for a patient handoff in SBAR format: " + patientinfo
+    )
+    return response.text
+
+def get_diagnoses_from_medical_record(patient_info_text):
+    prompt = (
+        "Given the following patient medical records, list the most probable diagnoses with brief explanations:\\n\\n"
+        f"{patient_info_text}\\n\\n"
+        "Output the diagnoses clearly and concisely."
+    )
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
     )
     return response.text
 
 # --- Streamlit App ---
-st.set_page_config(page_title="Medical Handoff Summarizer", layout="wide")
-st.markdown("<h1>Medical Handoff Summarizer</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color:gray;'>Upload a PDF to generate a structured patient handoff summary</p>", unsafe_allow_html=True)
+st.title("Medical Handoff Summarizer (SBAR Format + Diagnoses)")
 
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
-if uploaded_file:
-    temp_path = f"temp_{uploaded_file.name}"
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    st.info("Extracting text...")
-    raw_text = extract_text(temp_path)
-    with st.spinner("Generating summary with Gemini..."):
-        summary = get_summary(raw_text)
-    st.success("Summary generated successfully!")
-    st.markdown(summary)
+# Initialize session state for summaries
+if "summaries" not in st.session_state:
+    st.session_state.summaries = {}
+
+uploaded_files = st.file_uploader("Upload one or more Patient PDFs", type=["pdf"], accept_multiple_files=True)
+
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        file_id = uploaded_file.name  # unique identifier per file
+
+        if file_id not in st.session_state.summaries:
+            temp_path = f"temp_{file_id}"
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.info(f"Extracting text from {file_id}...")
+            raw_text = gettext(temp_path)
+            with st.spinner(f"Generating SBAR summary and diagnoses for {file_id}..."):
+                summary = getsummary(raw_text)
+                diagnoses = get_diagnoses_from_medical_record(raw_text)
+            st.session_state.summaries[file_id] = {
+                "summary": summary,
+                "diagnoses": diagnoses
+            }
+
+        st.markdown(f"### 📄 {file_id}")
+        st.success(f"Summary and diagnoses for {file_id} are ready!")
+
+        st.subheader("SBAR Summary")
+        st.markdown(st.session_state.summaries[file_id]["summary"])
+
+        st.subheader("Probable Diagnoses")
+        st.markdown(st.session_state.summaries[file_id]["diagnoses"])
+
+        st.markdown("---")
 """
-
 with open("app.py", "w") as f:
     f.write(app_code)
-!npm install -g localtunnel
-!pip install streamlit
