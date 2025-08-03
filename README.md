@@ -17,7 +17,7 @@ Hand-off sheets are a common tool used by physicians to transfer critical patien
 
 **ER Handoff Helper** is an AI-powered tool designed to:
 
-- 🔍 Extract and highlight important patient information from medical records from PDFs and images  
+- 🔍 Extract and highlight important patient information from medical records from PDFs  
 - 🧠 Summarize data in a clear and structured SBAR format for easier understanding  
 - ⚙️ Automate the handoff process, reducing cognitive load and communication errors  
 - ✅ Improve safety and speed of physician transitions during patient care
@@ -28,7 +28,7 @@ With the help of **pyPDF2**, **pytesseract** python libraries and **Gemini-2.5-f
 
 ## ✨ Key Features
 
-- ✅ Automatic extraction from medical record files (PDF, images)  
+- ✅ Automatic extraction from medical record files 
 - ✅ Summarized patient information (diagnoses, medications, allergies, vital signs, etc.)  
 - ✅ Highlighted critical updates and trends  
 - ✅ SBAR format for fast physician comprehension  
